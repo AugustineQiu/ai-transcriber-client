@@ -1,0 +1,26 @@
+# AI转录器本地客户端依赖
+# AI Transcriber Local Client Dependencies
+
+# 核心依赖 Core Dependencies
+yt-dlp>=2025.8.27              # YouTube下载器 - YouTube downloader
+requests>=2.31.0               # HTTP请求库 - HTTP requests library
+tqdm>=4.66.0                   # 进度条 - Progress bars
+colorama>=0.4.6                # 彩色终端输出 - Colored terminal output
+
+# 配置和数据处理 Configuration and Data Processing  
+pyyaml>=6.0                    # YAML配置文件支持 - YAML config file support
+click>=8.1.7                   # 命令行接口 - Command line interface
+pathvalidate>=3.2.0           # 文件名验证 - Filename validation
+
+# 可选GUI依赖 Optional GUI Dependencies (uncomment if needed)
+# tkinter (built-in with Python)
+# PyQt6>=6.5.0                # 现代GUI框架 - Modern GUI framework
+
+# 打包依赖 Packaging Dependencies (for development)
+# pyinstaller>=6.0.0          # 打包为可执行文件 - Package as executable
+# auto-py-to-exe>=2.44.0       # PyInstaller GUI - PyInstaller GUI
+
+# 开发依赖 Development Dependencies
+# pytest>=7.4.0               # 单元测试 - Unit testing
+# black>=23.0.0                # 代码格式化 - Code formatting
+# flake8>=6.0.0                # 代码检查 - Code linting
