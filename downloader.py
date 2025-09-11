@@ -68,10 +68,12 @@ class AudioDownloader:
         audio_format = getattr(self.config, 'audio_format', 'mp3')
         options = {
             'format': quality_map.get(self.config.audio_quality, "bestaudio/best"),
-            'outtmpl': f"{str(output_path)}.{audio_format}",
-            'extractaudio': True,
-            'audioformat': audio_format,
-            'audioquality': '0' if self.config.audio_quality == 'best' else '5',
+            'outtmpl': f"{str(output_path)}.%(ext)s",
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': audio_format,
+                'preferredquality': '0' if self.config.audio_quality == 'best' else '5',
+            }],
             'no_warnings': not self.config.verbose,
             'quiet': not self.config.verbose,
             'no_color': not self.config.use_colors,
@@ -98,7 +100,7 @@ class AudioDownloader:
         }
         
         # 添加进度钩子
-        if self.config.show_progress:
+        if self.progress_callback:
             options['progress_hooks'] = [self._progress_hook]
         
         # 临时目录
@@ -219,18 +221,23 @@ class AudioDownloader:
             with yt_dlp.YoutubeDL(options) as ydl:
                 ydl.download([url])
             
-            # 查找下载的文件
-            downloaded_files = list(self.download_dir.glob(f"{filename}*"))
-            if not downloaded_files:
-                return DownloadResult(
-                    success=False,
-                    error_message="下载完成但找不到文件"
-                )
+            # 查找下载的文件 (优先查找指定音频格式)
+            audio_file = self.download_dir / f"{filename}.{audio_format}"
+            if audio_file.exists():
+                downloaded_file = audio_file
+            else:
+                # 查找任何匹配的文件
+                downloaded_files = list(self.download_dir.glob(f"{filename}*"))
+                if not downloaded_files:
+                    return DownloadResult(
+                        success=False,
+                        error_message="下载完成但找不到文件"
+                    )
+                downloaded_file = downloaded_files[0]
             
-            downloaded_file = downloaded_files[0]
             file_size = downloaded_file.stat().st_size
             
-            print(f"✅ 下载完成: {downloaded_file.name}")
+            print(f"✅ 音频下载完成: {downloaded_file.name}")
             print(f"📊 文件大小: {file_size / 1024 / 1024:.1f}MB")
             
             return DownloadResult(
@@ -243,7 +250,8 @@ class AudioDownloader:
                 metadata={
                     'uploader': uploader,
                     'url': url,
-                    'download_time': time.time()
+                    'download_time': time.time(),
+                    'type': 'audio'
                 }
             )
             
