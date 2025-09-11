@@ -15,12 +15,14 @@ from dataclasses import dataclass, asdict
 class ClientConfig:
     """客户端配置类"""
     # 服务器配置
-    server_url: str = "https://personalaiassistant.my"
+    server_url: str = "http://localhost:8000"
     api_key: Optional[str] = None
     
     # 下载配置
     download_dir: str = "./downloads"
     audio_quality: str = "best"  # best, good, fast
+    audio_format: str = "mp3"  # mp3, wav, flac, m4a, ogg
+    video_quality: str = "720p"  # 1080p, 720p, 480p, 360p, best
     keep_local_files: bool = False
     max_file_size: int = 500 * 1024 * 1024  # 500MB
     

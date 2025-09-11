@@ -60,14 +60,46 @@ class ServerUploader:
     def _get_task_status_url(self, task_id: str) -> str:
         """获取任务状态API地址"""
         base_url = self.config.server_url.rstrip('/')
-        return f"{base_url}/api/tasks/{task_id}"
+        return f"{base_url}/api/task/{task_id}"
     
+    def auto_detect_server(self) -> Optional[str]:
+        """自动检测可用的本地服务器端口"""
+        print("🔍 自动检测本地服务器...")
+        
+        # 常见的本地服务器端口列表
+        local_ports = [8000, 8001, 8002, 8003, 8888, 8889, 5000, 3000]
+        
+        for port in local_ports:
+            test_url = f"http://localhost:{port}"
+            try:
+                health_urls = [
+                    f"{test_url}/health",
+                    f"{test_url}/api/health", 
+                    f"{test_url}/",
+                    f"{test_url}"
+                ]
+                
+                for url in health_urls:
+                    try:
+                        response = self.session.get(url, timeout=3)
+                        if response.status_code in [200, 404]:
+                            print(f"✅ 发现可用服务器: {test_url}")
+                            return test_url
+                    except requests.exceptions.RequestException:
+                        continue
+                        
+            except Exception:
+                continue
+                
+        print("❌ 未找到可用的本地服务器")
+        return None
+        
     def test_connection(self) -> bool:
-        """测试服务器连接"""
+        """测试服务器连接（支持自动端口检测）"""
         try:
             print("🔍 测试服务器连接...")
             
-            # 尝试访问服务器根路径或健康检查端点
+            # 首先尝试配置的服务器地址
             base_url = self.config.server_url.rstrip('/')
             health_urls = [
                 f"{base_url}/health",
@@ -84,6 +116,17 @@ class ServerUploader:
                         return True
                 except requests.exceptions.RequestException:
                     continue
+            
+            # 如果配置的服务器无法连接，尝试自动检测本地服务器
+            if 'localhost' in self.config.server_url or '127.0.0.1' in self.config.server_url:
+                print("🔄 尝试自动检测本地服务器端口...")
+                detected_url = self.auto_detect_server()
+                
+                if detected_url:
+                    # 更新配置中的服务器地址
+                    self.config.server_url = detected_url
+                    print(f"🔄 已切换到检测到的服务器: {detected_url}")
+                    return True
             
             print("❌ 服务器连接失败")
             return False

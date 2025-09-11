@@ -4,6 +4,10 @@
 
 set -e
 
+# 获取脚本所在目录并切换到该目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+cd "$SCRIPT_DIR"
+
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -67,14 +71,20 @@ activate_venv() {
 # 显示帮助
 show_help() {
     echo "🔧 使用方法:"
+    echo "  $0                             - 启动图形界面 (默认，推荐)"
     echo "  $0 [视频URL]                    - 转录指定URL"
+    echo "  $0 --gui                       - 启动图形界面"
+    echo "  $0 --cli                       - 启动命令行交互模式"
     echo "  $0 --config                    - 运行配置向导"
     echo "  $0 --test                      - 运行系统测试"
-    echo "  $0 --interactive               - 进入交互模式"
+    echo "  $0 --interactive               - 进入命令行交互模式"
     echo "  $0 --build                     - 构建可执行文件"
     echo "  $0 --help                      - 显示此帮助"
     echo
     echo "📋 示例:"
+    echo "  $0                             # 启动图形界面 (默认)"
+    echo "  $0 --gui                       # 启动图形界面"
+    echo "  $0 --cli                       # 启动命令行模式"
     echo "  $0 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'"
     echo "  $0 'https://www.bilibili.com/video/BV1xx411c7mu'"
     echo "  $0 --config"
@@ -87,17 +97,24 @@ main() {
     
     # 检查参数
     if [ $# -eq 0 ]; then
-        print_colored "BLUE" "🎮 启动交互模式..."
+        print_colored "BLUE" "🖥️ 启动图形界面（默认模式）..."
         check_python
         check_venv
         activate_venv
-        python main.py
+        python run_gui.py
         return
     fi
     
     case "$1" in
         --help|-h)
             show_help
+            ;;
+        --gui|-g)
+            print_colored "BLUE" "🖥️ 启动图形界面..."
+            check_python
+            check_venv
+            activate_venv
+            python run_gui.py
             ;;
         --config|-c)
             print_colored "BLUE" "🔧 运行配置向导..."
@@ -113,8 +130,8 @@ main() {
             activate_venv
             python main.py --test
             ;;
-        --interactive|-i)
-            print_colored "BLUE" "🎮 进入交互模式..."
+        --interactive|-i|--cli)
+            print_colored "BLUE" "🎮 进入命令行交互模式..."
             check_python
             check_venv
             activate_venv

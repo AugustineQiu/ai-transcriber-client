@@ -72,6 +72,7 @@ goto :eof
 :show_help
 echo 🔧 使用方法:
 echo   %~n0 [视频URL]                    - 转录指定URL
+echo   %~n0 --gui                       - 启动图形界面 (推荐)
 echo   %~n0 --config                    - 运行配置向导
 echo   %~n0 --test                      - 运行系统测试
 echo   %~n0 --interactive               - 进入交互模式
@@ -79,6 +80,7 @@ echo   %~n0 --build                     - 构建可执行文件
 echo   %~n0 --help                      - 显示此帮助
 echo.
 echo 📋 示例:
+echo   %~n0 --gui                       # 启动图形界面 (推荐新用户)
 echo   %~n0 "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 echo   %~n0 "https://www.bilibili.com/video/BV1xx411c7mu"
 echo   %~n0 --config
@@ -102,6 +104,15 @@ if "%~1"=="" (
 
 if /I "%~1"=="--help" goto :show_help
 if /I "%~1"=="-h" goto :show_help
+
+if /I "%~1"=="--gui" (
+    echo 🖥️ 启动图形界面...
+    call :check_python
+    call :check_venv
+    call :activate_venv
+    python run_gui.py
+    goto :end
+)
 
 if /I "%~1"=="--config" (
     echo 🔧 运行配置向导...

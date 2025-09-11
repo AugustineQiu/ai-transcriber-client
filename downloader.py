@@ -64,16 +64,37 @@ class AudioDownloader:
             "fast": "worstaudio/worst"
         }
         
-        # 基础选项
+        # 基础选项 (增强反检测)
+        audio_format = getattr(self.config, 'audio_format', 'mp3')
         options = {
             'format': quality_map.get(self.config.audio_quality, "bestaudio/best"),
-            'outtmpl': str(output_path),
+            'outtmpl': f"{str(output_path)}.{audio_format}",
             'extractaudio': True,
-            'audioformat': 'mp3',
+            'audioformat': audio_format,
             'audioquality': '0' if self.config.audio_quality == 'best' else '5',
             'no_warnings': not self.config.verbose,
             'quiet': not self.config.verbose,
             'no_color': not self.config.use_colors,
+            
+            # 反检测措施
+            'force_ipv4': True,  # 强制使用IPv4
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'referer': 'https://www.youtube.com/',
+            'headers': {
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+            },
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                    'skip': ['dash', 'hls'],
+                }
+            },
+            'cachedir': False,  # 禁用缓存
         }
         
         # 添加进度钩子
@@ -229,6 +250,138 @@ class AudioDownloader:
         except Exception as e:
             error_msg = str(e)
             print(f"❌ 下载失败: {error_msg}")
+            
+            return DownloadResult(
+                success=False,
+                error_message=error_msg
+            )
+    
+    def download_video(self, url: str, custom_filename: Optional[str] = None) -> DownloadResult:
+        """
+        下载视频文件（包含视频和音频）
+        
+        Args:
+            url: 视频URL
+            custom_filename: 自定义文件名（可选）
+            
+        Returns:
+            DownloadResult: 下载结果
+        """
+        try:
+            print(f"🔍 获取视频信息...")
+            info = self.get_video_info(url)
+            
+            if not info:
+                return DownloadResult(
+                    success=False,
+                    error_message="无法获取视频信息"
+                )
+            
+            title = info.get('title', 'Unknown')
+            duration = info.get('duration', 0)
+            uploader = info.get('uploader', 'Unknown')
+            
+            print(f"🎬 标题: {title}")
+            print(f"⏱️ 时长: {duration}秒")
+            print(f"👤 作者: {uploader}")
+            
+            # 检查文件大小限制
+            filesize_approx = info.get('filesize_approx') or info.get('filesize', 0)
+            if filesize_approx > self.config.max_file_size:
+                return DownloadResult(
+                    success=False,
+                    error_message=f"文件太大: {filesize_approx / 1024 / 1024:.1f}MB > {self.config.max_file_size / 1024 / 1024:.1f}MB"
+                )
+            
+            # 生成文件名
+            if custom_filename:
+                filename = custom_filename
+            else:
+                safe_title = self._sanitize_filename(title)
+                timestamp = int(time.time())
+                filename = f"{safe_title}_{timestamp}"
+            
+            # 获取视频质量配置
+            video_quality = getattr(self.config, 'video_quality', '720p')
+            
+            # 视频质量映射
+            quality_map = {
+                "best": "bestvideo+bestaudio/best",
+                "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
+                "720p": "bestvideo[height<=720]+bestaudio/best[height<=720]", 
+                "480p": "bestvideo[height<=480]+bestaudio/best[height<=480]",
+                "360p": "bestvideo[height<=360]+bestaudio/best[height<=360]"
+            }
+            
+            # 视频下载选项
+            options = {
+                'format': quality_map.get(video_quality, "bestvideo[height<=720]+bestaudio/best"),
+                'outtmpl': f"{str(self.download_dir / filename)}.%(ext)s",
+                'merge_output_format': 'mp4',  # 合并为mp4格式
+                'no_warnings': not self.config.verbose,
+                'quiet': not self.config.verbose,
+                'no_color': not self.config.use_colors,
+                
+                # 反检测措施
+                'force_ipv4': True,
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'referer': 'https://www.youtube.com/',
+                'headers': {
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Sec-Fetch-Dest': 'document',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-User': '?1',
+                },
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android', 'web'],
+                        'skip': ['dash', 'hls'],
+                    }
+                },
+                'cachedir': False,
+                'progress_hooks': [self._progress_hook] if self.progress_callback else []
+            }
+            
+            print(f"📥 开始下载视频...")
+            
+            # 下载
+            with yt_dlp.YoutubeDL(options) as ydl:
+                ydl.download([url])
+            
+            # 查找下载的文件
+            downloaded_files = list(self.download_dir.glob(f"{filename}*"))
+            if not downloaded_files:
+                return DownloadResult(
+                    success=False,
+                    error_message="下载完成但找不到文件"
+                )
+            
+            downloaded_file = downloaded_files[0]
+            file_size = downloaded_file.stat().st_size
+            
+            print(f"✅ 视频下载完成: {downloaded_file.name}")
+            print(f"📊 文件大小: {file_size / 1024 / 1024:.1f}MB")
+            
+            return DownloadResult(
+                success=True,
+                file_path=str(downloaded_file),
+                title=title,
+                duration=duration,
+                file_size=file_size,
+                format=downloaded_file.suffix[1:],  # 去掉点号
+                metadata={
+                    'uploader': uploader,
+                    'url': url,
+                    'download_time': time.time(),
+                    'type': 'video'
+                }
+            )
+            
+        except Exception as e:
+            error_msg = f"视频下载失败: {str(e)}"
+            print(f"❌ {error_msg}")
             
             return DownloadResult(
                 success=False,
