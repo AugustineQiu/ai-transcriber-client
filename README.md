@@ -80,7 +80,7 @@ python main.py "VIDEO_URL" --quality best
 ### 开发者信息 Developer Info
 - 版本：1.0.0
 - 许可证：MIT
-- 作者：AI Transcriber Team
+- 作者：AugustineQ
 - 更新时间：2025-09-09
 
 ### 常见问题 FAQ
